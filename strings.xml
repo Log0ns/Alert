@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">DrowsyAlert</string>
+    <string name="status_idle">Idle — tap Start Monitoring</string>
+    <string name="start_monitoring">Start Monitoring</string>
+    <string name="stop_monitoring">Stop Monitoring</string>
+    <string name="wake_up">WAKE UP!</string>
+    <string name="threshold_label">Alarm after eyes closed this long (seconds)</string>
+    <string name="permission_rationale">Camera access is needed to watch for closed eyes. This runs entirely on your device — nothing is recorded or uploaded.</string>
+</resources>
