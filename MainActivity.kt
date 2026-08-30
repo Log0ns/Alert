@@ -1,50 +1,38 @@
 package com.loganapps.drowsyalert
 
 import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.media.RingtoneManager
+import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
-import android.os.PowerManager
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
+import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import com.loganapps.drowsyalert.databinding.ActivityMainBinding
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var cameraExecutor: ExecutorService
-    private var cameraProvider: ProcessCameraProvider? = null
+    private lateinit var prefs: SharedPreferences
+    private var thresholdMillis: Long = 15_000L
 
-    private var isMonitoring = false
-    private var eyesClosedSinceMillis: Long? = null
-    private var closedThresholdMillis: Long = 15_000L // default: 15s, matches SeekBar default
-
-    private var mediaPlayer: MediaPlayer? = null
-    private var vibrator: Vibrator? = null
-    private var wakeLock: PowerManager.WakeLock? = null
-    private var alarmActive = false
-
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
+    private val requestPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            val cameraGranted = results[Manifest.permission.CAMERA] == true
+            if (cameraGranted) {
                 startMonitoring()
             } else {
-                Toast.makeText(this, "Camera permission is required to detect drowsiness.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    "Camera permission is required to detect drowsiness.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
 
@@ -53,205 +41,147 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        cameraExecutor = Executors.newSingleThreadExecutor()
+        prefs = getSharedPreferences(DrowsinessService.PREFS_NAME, Context.MODE_PRIVATE)
+        thresholdMillis = prefs.getLong(DrowsinessService.PREF_THRESHOLD_MS, 15_000L)
+        val initialProgress = (thresholdMillis / 1000).toInt().coerceIn(3, 45)
+        binding.thresholdSeekBar.progress = initialProgress
+        updateThresholdLabel(initialProgress)
 
-        vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
-        } else {
-            @Suppress("DEPRECATION")
-            getSystemService(VIBRATOR_SERVICE) as Vibrator
-        }
-
-        binding.thresholdSeekBar.progress = (closedThresholdMillis / 1000).toInt()
-        updateThresholdLabel()
-        binding.thresholdSeekBar.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+        binding.thresholdSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val seconds = progress.coerceAtLeast(3)
-                closedThresholdMillis = seconds * 1000L
-                updateThresholdLabel()
+                thresholdMillis = seconds * 1000L
+                updateThresholdLabel(seconds)
+                prefs.edit().putLong(DrowsinessService.PREF_THRESHOLD_MS, thresholdMillis).apply()
             }
-            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) {}
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
         binding.startStopButton.setOnClickListener {
-            if (isMonitoring) {
+            if (DrowsinessService.isRunning.value == true) {
                 stopMonitoring()
             } else {
-                requestCameraAndStart()
+                requestPermissionsAndStart()
             }
         }
+
+        observeService()
+        renderState()
     }
 
-    private fun updateThresholdLabel() {
-        binding.thresholdLabel.text = getString(R.string.threshold_label) +
-            "  (${closedThresholdMillis / 1000}s)"
+    private fun updateThresholdLabel(seconds: Int) {
+        binding.thresholdValue.text = getString(R.string.seconds_format, seconds)
     }
 
-    private fun requestCameraAndStart() {
+    private fun requestPermissionsAndStart() {
+        val needed = mutableListOf(Manifest.permission.CAMERA)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            needed.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        val notGranted = needed.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
         when {
-            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
-                PackageManager.PERMISSION_GRANTED -> startMonitoring()
-
+            notGranted.isEmpty() -> startMonitoring()
             shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
                 AlertDialog.Builder(this)
-                    .setTitle("Camera needed")
+                    .setTitle(getString(R.string.camera_needed_title))
                     .setMessage(getString(R.string.permission_rationale))
-                    .setPositiveButton("Continue") { _, _ ->
-                        requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    .setPositiveButton(getString(R.string.continue_label)) { _, _ ->
+                        requestPermissions.launch(notGranted.toTypedArray())
                     }
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(getString(R.string.cancel_label), null)
                     .show()
             }
-
-            else -> requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+            else -> requestPermissions.launch(notGranted.toTypedArray())
         }
     }
 
     private fun startMonitoring() {
-        isMonitoring = true
-        eyesClosedSinceMillis = null
-        binding.startStopButton.text = getString(R.string.stop_monitoring)
-        binding.statusText.text = "Starting camera…"
-        acquireWakeLock()
-        bindCamera()
+        val intent = Intent(this, DrowsinessService::class.java)
+        ContextCompat.startForegroundService(this, intent)
     }
 
     private fun stopMonitoring() {
-        isMonitoring = false
-        eyesClosedSinceMillis = null
-        binding.startStopButton.text = getString(R.string.start_monitoring)
-        binding.statusText.text = getString(R.string.status_idle)
-        cameraProvider?.unbindAll()
-        stopAlarm()
-        releaseWakeLock()
+        val intent = Intent(this, DrowsinessService::class.java).apply {
+            action = DrowsinessService.ACTION_STOP
+        }
+        startService(intent)
     }
 
-    private fun bindCamera() {
-        val providerFuture = ProcessCameraProvider.getInstance(this)
-        providerFuture.addListener({
-            cameraProvider = providerFuture.get()
-
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(binding.previewView.surfaceProvider)
-            }
-
-            val analysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-                .also {
-                    it.setAnalyzer(cameraExecutor, EyeAnalyzer { state -> handleEyeState(state) })
-                }
-
-            // Front camera, since this watches the user's own eyes.
-            val selector = CameraSelector.DEFAULT_FRONT_CAMERA
-
-            try {
-                cameraProvider?.unbindAll()
-                cameraProvider?.bindToLifecycle(this, selector, preview, analysis)
-            } catch (e: Exception) {
-                runOnUiThread {
-                    Toast.makeText(this, "Could not start camera: ${e.message}", Toast.LENGTH_LONG).show()
-                    stopMonitoring()
-                }
-            }
-        }, ContextCompat.getMainExecutor(this))
+    private fun observeService() {
+        DrowsinessService.isRunning.observe(this) { renderState() }
+        DrowsinessService.isAlarming.observe(this) { renderState() }
+        DrowsinessService.eyeState.observe(this) { renderState() }
+        DrowsinessService.closedElapsedMs.observe(this) { renderState() }
     }
 
-    private fun handleEyeState(state: EyeAnalyzer.EyeState) {
-        runOnUiThread {
-            if (!isMonitoring) return@runOnUiThread
+    private fun renderState() {
+        val running = DrowsinessService.isRunning.value == true
+        val alarming = DrowsinessService.isAlarming.value == true
+        val state = DrowsinessService.eyeState.value
+        val elapsedMs = DrowsinessService.closedElapsedMs.value ?: 0L
 
-            when (state) {
-                is EyeAnalyzer.EyeState.NoFaceDetected -> {
-                    binding.statusText.text = "No face detected — reposition camera"
-                    // Don't reset the closed-eye timer here: a brief detection
-                    // dropout shouldn't cancel an in-progress drowsy episode.
-                }
-                is EyeAnalyzer.EyeState.EyesOpen -> {
-                    eyesClosedSinceMillis = null
-                    binding.statusText.text = "Eyes open"
-                    if (alarmActive) stopAlarm()
-                }
-                is EyeAnalyzer.EyeState.EyesClosed -> {
-                    val now = System.currentTimeMillis()
-                    val since = eyesClosedSinceMillis ?: now.also { eyesClosedSinceMillis = it }
-                    val elapsed = now - since
-                    binding.statusText.text = "Eyes closed (${elapsed / 1000}s)"
-                    if (elapsed >= closedThresholdMillis && !alarmActive) {
-                        triggerAlarm()
+        when {
+            alarming -> {
+                setButton(getString(R.string.stop_monitoring), R.drawable.ic_stop, R.color.alarm_red)
+                binding.statusDot.setBackgroundResource(R.drawable.dot_alert)
+                binding.statusLabel.text = getString(R.string.status_alarm)
+                setEyeIcon(R.drawable.ic_eye_closed, R.color.alarm_red)
+                binding.closedTimerLabel.text = getString(R.string.hint_alarm)
+            }
+            running -> {
+                setButton(getString(R.string.stop_monitoring), R.drawable.ic_stop, R.color.muted_text)
+                when (state) {
+                    is EyeAnalyzer.EyeState.EyesClosed -> {
+                        binding.statusDot.setBackgroundResource(R.drawable.dot_amber)
+                        binding.statusLabel.text = getString(R.string.status_eyes_closed)
+                        setEyeIcon(R.drawable.ic_eye_closed, R.color.amber)
+                        val secs = elapsedMs / 1000
+                        binding.closedTimerLabel.text = getString(
+                            R.string.closed_progress_format, secs, thresholdMillis / 1000
+                        )
+                    }
+                    is EyeAnalyzer.EyeState.EyesOpen -> {
+                        binding.statusDot.setBackgroundResource(R.drawable.dot_watching)
+                        binding.statusLabel.text = getString(R.string.status_eyes_open)
+                        setEyeIcon(R.drawable.ic_eye, R.color.accent_teal)
+                        binding.closedTimerLabel.text = getString(R.string.hint_watching)
+                    }
+                    else -> {
+                        binding.statusDot.setBackgroundResource(R.drawable.dot_watching)
+                        binding.statusLabel.text = getString(R.string.status_no_face)
+                        setEyeIcon(R.drawable.ic_eye, R.color.muted_text)
+                        binding.closedTimerLabel.text = getString(R.string.hint_no_face)
                     }
                 }
             }
-        }
-    }
-
-    private fun triggerAlarm() {
-        alarmActive = true
-        binding.alertOverlay.visibility = android.view.View.VISIBLE
-        binding.wakeAlertText.visibility = android.view.View.VISIBLE
-
-        vibrator?.let { v ->
-            val pattern = longArrayOf(0, 500, 300, 500, 300, 500)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                v.vibrate(VibrationEffect.createWaveform(pattern, 0))
-            } else {
-                @Suppress("DEPRECATION")
-                v.vibrate(pattern, 0)
+            else -> {
+                setButton(getString(R.string.start_monitoring), R.drawable.ic_play, R.color.accent_teal)
+                binding.statusDot.setBackgroundResource(R.drawable.dot_idle)
+                binding.statusLabel.text = getString(R.string.status_idle)
+                setEyeIcon(R.drawable.ic_eye, R.color.muted_text)
+                binding.closedTimerLabel.text = getString(R.string.hint_start)
             }
         }
-
-        try {
-            val alarmUri = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            mediaPlayer = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ALARM)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                setDataSource(this@MainActivity, alarmUri)
-                isLooping = true
-                setVolume(1.0f, 1.0f)
-                prepare()
-                start()
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Could not play alarm sound: ${e.message}", Toast.LENGTH_LONG).show()
-        }
     }
 
-    private fun stopAlarm() {
-        alarmActive = false
-        binding.alertOverlay.visibility = android.view.View.INVISIBLE
-        binding.wakeAlertText.visibility = android.view.View.INVISIBLE
-        vibrator?.cancel()
-        mediaPlayer?.let {
-            if (it.isPlaying) it.stop()
-            it.release()
-        }
-        mediaPlayer = null
-        eyesClosedSinceMillis = null
+    private fun setButton(text: String, iconRes: Int, colorRes: Int) {
+        binding.startStopButton.text = text
+        binding.startStopButton.setIconResource(iconRes)
+        binding.startStopButton.backgroundTintList =
+            ColorStateList.valueOf(ContextCompat.getColor(this, colorRes))
     }
 
-    private fun acquireWakeLock() {
-        val pm = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(
-            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE,
-            "DrowsyAlert::MonitoringWakeLock"
-        ).apply { acquire(6 * 60 * 60 * 1000L /* 6 hours max, then auto-release as a safety net */) }
+    private fun setEyeIcon(iconRes: Int, colorRes: Int) {
+        binding.eyeIcon.setImageResource(iconRes)
+        binding.eyeIcon.imageTintList =
+            ColorStateList.valueOf(ContextCompat.getColor(this, colorRes))
     }
 
-    private fun releaseWakeLock() {
-        wakeLock?.let { if (it.isHeld) it.release() }
-        wakeLock = null
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        stopAlarm()
-        releaseWakeLock()
-        cameraExecutor.shutdown()
+    override fun onStart() {
+        super.onStart()
+        renderState()
     }
 }

@@ -1,78 +1,110 @@
 # DrowsyAlert
 
-An Android app that uses your phone's front camera to watch for closed eyes and
-sounds a loud alarm + vibration to keep you awake — useful as a driving/study
-alertness aid. Everything runs **on-device**; no video or images are ever
-recorded, stored, or uploaded.
+An Android app that uses your phone's front camera to watch for closed eyes
+and sounds a loud full-screen alarm to keep you awake — useful as a
+driving/study alertness aid. Detection runs **on-device**; no video or
+images are ever recorded, stored, or uploaded. Monitoring keeps running in
+the background — you can lock the phone or switch to another app (maps,
+music, etc.) and it will still alert you.
 
 ## How it works
-- **CameraX** streams the front camera preview and hands frames to an analyzer.
-- **ML Kit Face Detection** (Google's on-device model) returns a per-eye
-  "open probability" for each frame. When the average of both eyes drops
-  below a threshold, the app treats the eyes as closed and starts a timer.
-- If eyes stay closed longer than your chosen threshold (default 15s,
-  adjustable 3–45s via the slider), the app:
-  - flashes a full-screen red alert with "WAKE UP!"
-  - plays your device's default alarm sound on a loop
-  - vibrates in a repeating pattern
-  - all of which stop automatically as soon as open eyes are detected again.
-- A wake lock keeps the screen on while monitoring is active, since the point
-  is to keep watching your face continuously.
+- Tapping **Start Monitoring** launches `DrowsinessService`, a foreground
+  service that owns the front camera and runs continuously — independent
+  of whether the app is on screen. A persistent notification ("DrowsyAlert
+  is watching") shows it's active, with a Stop action.
+- The service uses **CameraX** + **ML Kit Face Detection** (on-device) to
+  get a per-eye "open probability" every frame. When the average drops
+  below a threshold, it starts a timer.
+- If eyes stay closed longer than your chosen threshold (adjustable
+  3–45s, default 15s, via the slider on the main screen), it:
+  - vibrates in a repeating pattern and plays your device's default alarm
+    sound on a loop
+  - fires a full-screen high-priority notification that pops
+    `AlarmActivity` — a big red "WAKE UP!" screen — over the lock screen
+    or whatever app you're currently in, similar to how an alarm clock or
+    incoming call interrupts you
+  - the alert clears as soon as you tap **I'm awake**, or automatically
+    once open eyes are detected again
+- The main screen is a status/control panel — a status dot + eye icon that
+  reflect live state (idle / watching / eyes closed, counting / alarm),
+  the threshold slider, and the Start/Stop button. It has no camera
+  preview by design, since the camera is owned by the background service.
+
+## Permissions
+- **Camera** — required, for eye detection.
+- **Notifications** — used for the "watching" status notification and the
+  full-screen wake-up alert (Android 13+ requires this be granted
+  explicitly; the app requests it alongside Camera).
+- Vibration and wake-lock permissions are normal permissions, granted
+  automatically at install.
+
+## Opening the project
+1. Install [Android Studio](https://developer.android.com/studio) (Koala or newer).
+2. Choose **Open** and select this `DrowsyAlert` folder.
+3. Let Android Studio sync Gradle (it will generate the Gradle wrapper for you
+   automatically on first sync).
+4. Connect a physical phone — CameraX + a real front camera work far more
+   reliably than an emulator here — and hit **Run**.
+5. Grant camera + notification permissions when prompted, adjust the alarm
+   threshold, and tap **Start Monitoring**. You can now leave the app.
+
+Minimum SDK: Android 8.0 (API 26). Requires a front-facing camera.
 
 ## Building an APK from your phone only (no computer needed)
 This repo includes `.github/workflows/build.yml`, which builds a debug APK
 in the cloud whenever you push to GitHub — so you never need Android Studio
 or Termux. Steps, all doable from a phone browser or the GitHub app:
 
-1. Unzip this project on your phone (any file manager with "extract" works).
-2. Create a free GitHub account if you don't have one, then create a new
-   **public or private repository** (e.g. `drowsy-alert`).
-3. Upload the files: on the repo page, tap **Add file → Upload files**, then
-   select everything from the unzipped `DrowsyAlert` folder (do this in a
-   couple batches if your browser limits how many files you can pick at
-   once — folder structure is preserved as long as you select nested files
-   together, e.g. select the whole `app` folder's contents, then `.github`'s
-   contents separately). Commit the upload.
-4. Go to the **Actions** tab of your repo. A "Build debug APK" run should
-   start automatically (or tap **Run workflow** if it doesn't).
-5. Wait a few minutes for it to finish (green checkmark), then open the run
-   and download the **DrowsyAlert-debug-apk** artifact — that's a zip
-   containing `app-debug.apk`.
-6. On your phone, open that APK file to install it. You'll need to allow
-   "install unknown apps" for your browser/files app when prompted — this is
-   normal for any APK not from the Play Store.
+1. Create a free GitHub account if you don't have one, then create a new
+   **public or private repository**.
+2. On the repo page, **Add file → Upload files**, and upload the single
+   `DrowsyAlert-project.zip` file (not its extracted contents — mobile
+   browsers tend to flatten folder structure on multi-file uploads, but a
+   single zip avoids that). Commit it.
+3. Open the green **Code** button → **Codespaces** tab → **Create
+   codespace on main**. This gives you a full VS Code environment with a
+   terminal, running in your browser.
+4. In the terminal, run:
+   ```
+   unzip DrowsyAlert-project.zip
+   mv DrowsyAlert/* DrowsyAlert/.github .
+   rmdir DrowsyAlert
+   rm DrowsyAlert-project.zip
+   git add .
+   git commit -m "Add project files"
+   git push
+   ```
+5. Go to the **Actions** tab — a build should start automatically. Once it
+   finishes (green check), open the run, download the
+   **DrowsyAlert-debug-apk** artifact, extract it, and install
+   `app-debug.apk` on your phone (allow "install unknown apps" when
+   prompted — normal for any APK not from the Play Store).
 
-This produces a debug-signed APK, which is fine for installing on your own
-device but isn't meant for distributing to others or publishing to the Play
-Store.
-
-## Opening the project (if you do have a computer later)
-1. Install [Android Studio](https://developer.android.com/studio) (Koala or newer).
-2. Choose **Open** and select this `DrowsyAlert` folder.
-3. Let Android Studio sync Gradle (it will generate the Gradle wrapper for you
-   automatically on first sync).
-4. Connect a phone (or start an emulator with a webcam-backed front camera —
-   physical devices work much better for this) and hit **Run**.
-5. Grant the camera permission when prompted, adjust the alarm threshold, and
-   tap **Start Monitoring**.
-
-Minimum SDK: Android 8.0 (API 26). Requires a front-facing camera.
+This produces a debug-signed APK: fine for your own device, not meant for
+distributing to others or the Play Store.
 
 ## Notes and honest limitations
-- Face/eye detection can be affected by glasses, low light, camera angle, or
-  the phone shifting position — mount the phone so your face stays in frame.
+- Face/eye detection can be affected by glasses, low light, camera angle,
+  or the phone shifting position — mount the phone so your face stays in
+  frame.
 - This is a driver-alertness *aid*, not a substitute for actually pulling
   over and resting if you're drowsy. Treat the alarm as a signal to stop
-  driving, not just a snooze-and-continue tool.
-- The app currently runs only while in the foreground with the screen on
-  (by design, since it needs the camera and needs to alert you visually too).
-  It does not run as a background/headless service.
+  driving, not just something to dismiss and continue.
+- Some phone manufacturers (Samsung, Xiaomi, Huawei, etc.) aggressively
+  kill background services to save battery. If monitoring stops
+  unexpectedly after a while, look up "[your phone brand] disable battery
+  optimization for an app" and exempt DrowsyAlert.
+- The full-screen alarm relies on Android's full-screen-intent notification
+  mechanism (the same one alarm-clock and calling apps use) — this reliably
+  wakes the screen and shows over the lock screen and other apps on stock
+  Android; behavior can vary slightly on heavily customized OEM skins.
 
 ## Where to tweak things
 - `EyeAnalyzer.kt` — `closedThreshold` (0.35f) controls how "closed" an eye
   needs to look before it counts; lower it if it's triggering too easily,
   raise it if it's missing genuine closures.
-- `MainActivity.kt` — `triggerAlarm()` / `stopAlarm()` control the alarm
-  sound, vibration pattern, and full-screen overlay.
-- `activity_main.xml` — the SeekBar's `max` (45) bounds the slider's range in
-  seconds.
+- `DrowsinessService.kt` — `triggerAlarm()` / `stopAlarm()` control the
+  alarm sound, vibration pattern, and notifications; `bindCamera()` and
+  `handleEyeState()` control detection logic.
+- `activity_main.xml` / `colors.xml` — the visual design (dark theme,
+  status card, accent colors).

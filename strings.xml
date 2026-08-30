@@ -1,9 +1,36 @@
 <resources>
     <string name="app_name">DrowsyAlert</string>
-    <string name="status_idle">Idle — tap Start Monitoring</string>
+    <string name="app_subtitle">Watches for closed eyes and wakes you up</string>
+
+    <string name="status_idle">Idle</string>
+    <string name="status_watching">Watching</string>
+    <string name="status_eyes_open">Eyes open</string>
+    <string name="status_eyes_closed">Eyes closed</string>
+    <string name="status_no_face">No face detected</string>
+    <string name="status_alarm">Wake up!</string>
+
+    <string name="hint_start">Tap Start Monitoring below to begin</string>
+    <string name="hint_watching">Watching for closed eyes</string>
+    <string name="hint_no_face">Reposition so your face is in view</string>
+    <string name="hint_alarm">Tap Stop, or dismiss the alert, to clear this</string>
+
     <string name="start_monitoring">Start Monitoring</string>
     <string name="stop_monitoring">Stop Monitoring</string>
+
     <string name="wake_up">WAKE UP!</string>
-    <string name="threshold_label">Alarm after eyes closed this long (seconds)</string>
-    <string name="permission_rationale">Camera access is needed to watch for closed eyes. This runs entirely on your device — nothing is recorded or uploaded.</string>
+    <string name="wake_up_subtitle">Your eyes have been closed too long</string>
+    <string name="im_awake">I\'m awake</string>
+
+    <string name="threshold_label">Alarm after eyes closed for</string>
+    <string name="seconds_format">%ds</string>
+    <string name="closed_progress_format">Eyes closed %1$ds / %2$ds</string>
+
+    <string name="permission_rationale">Camera and notification access let DrowsyAlert watch for closed eyes — including while the app is in the background — and alert you. Nothing is recorded or uploaded; detection happens entirely on your device.</string>
+    <string name="camera_needed_title">Permissions needed</string>
+    <string name="continue_label">Continue</string>
+    <string name="cancel_label">Cancel</string>
+
+    <string name="notif_monitoring_title">DrowsyAlert is watching</string>
+    <string name="notif_monitoring_text">Monitoring for closed eyes</string>
+    <string name="notif_alarm_text">Your eyes have been closed — tap to dismiss</string>
 </resources>
