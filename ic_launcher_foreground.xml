@@ -3,13 +3,20 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Eyelid arc — thin stroke, top curve only -->
     <path
-        android:fillColor="#FF5252"
-        android:pathData="M54,34 C34,34 18,54 18,54 C18,54 34,74 54,74 C74,74 90,54 90,54 C90,54 74,34 54,34 Z" />
-    <path
-        android:fillColor="#0D1117"
-        android:pathData="M54,42 C46.3,42 40,48.3 40,56 C40,63.7 46.3,70 54,70 C61.7,70 68,63.7 68,56 C68,48.3 61.7,42 54,42 Z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,48 C50.7,48 48,50.7 48,54 C48,57.3 50.7,60 54,60 C57.3,60 60,57.3 60,54 C60,50.7 57.3,48 54,48 Z" />
+        android:pathData="M28,54 C28,54 38,36 54,36 C70,36 80,54 80,54"
+        android:strokeColor="#00D4B4"
+        android:strokeWidth="4.5"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent" />
+
+    <!-- Pupil dot -->
+    <circle
+        android:cx="54"
+        android:cy="54"
+        android:r="6"
+        android:fillColor="#00D4B4" />
+
 </vector>

@@ -6,6 +6,7 @@
     <string name="status_watching">Watching</string>
     <string name="status_eyes_open">Eyes open</string>
     <string name="status_eyes_closed">Eyes closed</string>
+    <string name="status_drooping">Eyes drooping</string>
     <string name="status_no_face">No face detected</string>
     <string name="status_alarm">Wake up!</string>
 
@@ -13,6 +14,7 @@
     <string name="hint_watching">Watching for closed eyes</string>
     <string name="hint_no_face">Reposition so your face is in view</string>
     <string name="hint_alarm">Tap Stop, or dismiss the alert, to clear this</string>
+    <string name="hint_drooping">Eyes look heavy — stay focused</string>
 
     <string name="start_monitoring">Start Monitoring</string>
     <string name="stop_monitoring">Stop Monitoring</string>
@@ -24,6 +26,12 @@
     <string name="threshold_label">Alarm after eyes closed for</string>
     <string name="seconds_format">%ds</string>
     <string name="closed_progress_format">Eyes closed %1$ds / %2$ds</string>
+
+    <string name="glasses_mode_label">I wear glasses</string>
+    <string name="glasses_mode_hint">Adjusts sensitivity — glasses can reduce eye-open readings</string>
+    <string name="early_warning_label">Early drowsiness warning</string>
+    <string name="early_warning_hint">Says "Stay awake" when eyes start drooping before fully closing</string>
+    <string name="settings_title">Settings</string>
 
     <string name="permission_rationale">Camera and notification access let DrowsyAlert watch for closed eyes — including while the app is in the background — and alert you. Nothing is recorded or uploaded; detection happens entirely on your device.</string>
     <string name="camera_needed_title">Permissions needed</string>

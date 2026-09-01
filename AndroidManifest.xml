@@ -38,7 +38,8 @@
             android:launchMode="singleTop"
             android:screenOrientation="portrait"
             android:showWhenLocked="true"
-            android:turnScreenOn="true" />
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.DrowsyAlert.Alarm" />
 
         <service
             android:name=".DrowsinessService"
