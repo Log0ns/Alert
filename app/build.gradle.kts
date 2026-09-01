@@ -51,4 +51,8 @@ dependencies {
 
     // ML Kit Face Detection (on-device, gives eye-open probabilities)
     implementation("com.google.mlkit:face-detection:16.1.7")
+
+    // LifecycleService and LiveData
+    implementation("androidx.lifecycle:lifecycle-service:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.8.7")
 }
