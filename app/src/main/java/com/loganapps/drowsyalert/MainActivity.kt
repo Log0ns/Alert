@@ -28,7 +28,10 @@ class MainActivity : AppCompatActivity() {
 
     private val requestPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
-            if (results[Manifest.permission.CAMERA] == true) {
+            // Camera is the only hard requirement — notifications are optional
+            val cameraGranted = results[Manifest.permission.CAMERA] == true
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            if (cameraGranted) {
                 startMonitoring()
             } else {
                 Toast.makeText(this, "Camera permission is required to detect drowsiness.", Toast.LENGTH_LONG).show()
@@ -88,25 +91,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestPermissionsAndStart() {
+        val cameraGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        if (cameraGranted) {
+            startMonitoring()
+            return
+        }
         val needed = mutableListOf(Manifest.permission.CAMERA).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        val notGranted = needed.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-        when {
-            notGranted.isEmpty() -> startMonitoring()
-            shouldShowRequestPermissionRationale(Manifest.permission.CAMERA) -> {
-                AlertDialog.Builder(this)
-                    .setTitle(getString(R.string.camera_needed_title))
-                    .setMessage(getString(R.string.permission_rationale))
-                    .setPositiveButton(getString(R.string.continue_label)) { _, _ ->
-                        requestPermissions.launch(notGranted.toTypedArray())
-                    }
-                    .setNegativeButton(getString(R.string.cancel_label), null)
-                    .show()
-            }
-            else -> requestPermissions.launch(notGranted.toTypedArray())
+        if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+            AlertDialog.Builder(this)
+                .setTitle(getString(R.string.camera_needed_title))
+                .setMessage(getString(R.string.permission_rationale))
+                .setPositiveButton(getString(R.string.continue_label)) { _, _ ->
+                    requestPermissions.launch(needed.toTypedArray())
+                }
+                .setNegativeButton(getString(R.string.cancel_label), null)
+                .show()
+        } else {
+            requestPermissions.launch(needed.toTypedArray())
         }
     }
 
