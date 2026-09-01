@@ -1,4 +1,4 @@
-package com.loganapps.drowsyalert
+﻿package com.loganapps.vigil
 
 import android.content.Intent
 import android.os.Build
@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.view.WindowManager
 import android.view.animation.AnimationUtils
 import androidx.appcompat.app.AppCompatActivity
-import com.loganapps.drowsyalert.databinding.ActivityAlarmBinding
+import com.loganapps.vigil.databinding.ActivityAlarmBinding
 
 class AlarmActivity : AppCompatActivity() {
 

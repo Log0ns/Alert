@@ -1,4 +1,4 @@
-package com.loganapps.drowsyalert
+﻿package com.loganapps.vigil
 
 import android.Manifest
 import android.content.Context
@@ -17,8 +17,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.loganapps.drowsyalert.databinding.ActivityMainBinding
-import com.loganapps.drowsyalert.databinding.BottomSheetSettingsBinding
+import com.loganapps.vigil.databinding.ActivityMainBinding
+import com.loganapps.vigil.databinding.BottomSheetSettingsBinding
 
 class MainActivity : AppCompatActivity() {
 

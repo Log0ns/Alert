@@ -1,4 +1,4 @@
-package com.loganapps.drowsyalert
+﻿package com.loganapps.vigil
 
 import android.annotation.SuppressLint
 import androidx.camera.core.ImageProxy

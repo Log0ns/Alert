@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">DrowsyAlert</string>
+    <string name="app_name">Vigil</string>
     <string name="app_subtitle">Watches for closed eyes and wakes you up</string>
 
     <string name="status_idle">Idle</string>
@@ -38,7 +38,7 @@
     <string name="continue_label">Continue</string>
     <string name="cancel_label">Cancel</string>
 
-    <string name="notif_monitoring_title">DrowsyAlert is watching</string>
+    <string name="notif_monitoring_title">Vigil is watching</string>
     <string name="notif_monitoring_text">Monitoring for closed eyes</string>
     <string name="notif_alarm_text">Your eyes have been closed — tap to dismiss</string>
 </resources>

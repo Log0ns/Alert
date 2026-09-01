@@ -1,4 +1,4 @@
-package com.loganapps.drowsyalert
+﻿package com.loganapps.vigil
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -38,8 +38,8 @@ import java.util.concurrent.Executors
 class DrowsinessService : LifecycleService() {
 
     companion object {
-        const val ACTION_STOP = "com.loganapps.drowsyalert.action.STOP"
-        const val ACTION_DISMISS_ALARM = "com.loganapps.drowsyalert.action.DISMISS_ALARM"
+        const val ACTION_STOP = "com.loganapps.vigil.action.STOP"
+        const val ACTION_DISMISS_ALARM = "com.loganapps.vigil.action.DISMISS_ALARM"
         const val PREFS_NAME = "drowsy_alert_prefs"
         const val PREF_THRESHOLD_MS = "threshold_ms"
         const val PREF_GLASSES_MODE = "glasses_mode"
@@ -276,7 +276,7 @@ class DrowsinessService : LifecycleService() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "DrowsyAlert::ServiceWakeLock"
+            "Vigil::ServiceWakeLock"
         ).apply { acquire(8 * 60 * 60 * 1000L) }
     }
 
