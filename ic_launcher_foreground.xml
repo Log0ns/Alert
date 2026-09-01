@@ -12,11 +12,9 @@
         android:strokeLineCap="round"
         android:fillColor="@android:color/transparent" />
 
-    <!-- Pupil dot -->
-    <circle
-        android:cx="54"
-        android:cy="54"
-        android:r="6"
+    <!-- Pupil dot — drawn as a path circle instead of <circle> which isn't supported in Android vectors -->
+    <path
+        android:pathData="M54,48 a6,6 0 1,0 0.001,0 Z"
         android:fillColor="#00D4B4" />
 
 </vector>
